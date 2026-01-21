@@ -1,6 +1,3 @@
-
-
-
 function setup() {
   createCanvas(400, 400);
 
@@ -18,13 +15,14 @@ function setup() {
 }
 
 function draw() {
-  background(220, 220, 255);
+  background(31, 112, 200);
   drawCat(200, 150);
 }
 
+
 function drawCat(x, y) {
   //Body
-  fill(100, 50, 20);  // brown
+  fill(100, 50, 20);  // color brown
   rect(x - 40, y + 40, 80, 60);
   
   // Head
