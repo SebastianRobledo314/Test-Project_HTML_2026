@@ -1,14 +1,29 @@
+
+
+
 function setup() {
-  createCanvas(window.innerWidth, 400);
+  createCanvas(400, 400);
+
+  let img = new Image();
+  img.onload = function() {
+    let canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    let ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 48, 48);
+    let cursorUrl = canvas.toDataURL();
+    document.body.style.cursor = `url('${cursorUrl}') 16 16, auto`;
+  };
+  img.src = 'images/Paw.png';
 }
 
 function draw() {
-  background(220);
+  background(220, 220, 255);
   drawCat(200, 150);
 }
 
 function drawCat(x, y) {
-  // Body
+  //Body
   fill(100, 50, 20);  // brown
   rect(x - 40, y + 40, 80, 60);
   
