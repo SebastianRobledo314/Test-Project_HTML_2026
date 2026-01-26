@@ -1,6 +1,6 @@
 function setup() {
   createCanvas(400, 400);
-  // Custom cursor setup (unchanged)
+  // Custom cursor setup 
   let img = new Image();
   img.onload = function() {
     let canvas = document.createElement('canvas');
@@ -13,7 +13,7 @@ function setup() {
   };
   img.src = 'images/Paw.png';
 
-  // Interactive image logic for multiple images
+  
   function setupInteractiveSwap(imgId) {
     const imgElem = document.getElementById(imgId);
     if (imgElem) {
@@ -41,7 +41,7 @@ function setup() {
   }
 
   setupInteractiveSwap('interactive-img');
-  setupInteractiveSwap('center-img'); // If you add a center image with id="center-img"
+  setupInteractiveSwap('center-img'); 
 }
 
 
