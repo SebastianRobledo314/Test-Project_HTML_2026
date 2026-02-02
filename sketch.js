@@ -186,12 +186,16 @@ function setup() {
             const size = sizeMin + Math.floor(Math.random() * (sizeMax - sizeMin + 1));
             const offsetX = (Math.random() - 0.5) * 30; // +/-15px
             const offsetY = (Math.random() - 0.5) * 8;  // +/-4px
+            const driftX = (Math.random() - 0.5) * 40;  // horizontal drift during rise
+            const rise = 120 + Math.floor(Math.random() * 60); // variable rise height
             b.style.width = size + 'px';
             b.style.height = size + 'px';
             b.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
             b.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
             b.style.animationDuration = (durMin + Math.floor(Math.random() * (durMax - durMin + 1))) + 'ms';
             b.style.animationDelay = (Math.floor(Math.random() * delayMax)) + 'ms';
+            b.style.setProperty('--driftX', driftX + 'px');
+            b.style.setProperty('--rise', rise + 'px');
             frame.appendChild(b);
             b.addEventListener('animationend', () => b.remove());
           }
@@ -244,6 +248,121 @@ function setup() {
 
   setupInteractiveSwap('interactive-img');
   setupInteractiveSwap('center-img'); 
+
+  // Initialize objective tab transitions
+  initTabTransitions();
+}
+// Transition overlay logic for tab navigation
+function initTabTransitions() {
+  const tabs = document.querySelectorAll('.tabs .tab');
+  if (!tabs.length) return;
+  tabs.forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href') || '';
+      // Only animate for objective pages, not home
+      const isObjective = /objective-\d+\.html$/i.test(href) || /objective-1\.html$/i.test(href);
+      if (!isObjective) return; // let default navigation occur
+      e.preventDefault();
+
+      const sourceFrame = document.querySelector('.image-interactive');
+      if (!sourceFrame) { window.location.href = href; return; }
+      const rect = sourceFrame.getBoundingClientRect();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'transition-overlay';
+      const frame = document.createElement('div');
+      frame.className = 'transition-frame image-interactive';
+      frame.style.left = rect.left + 'px';
+      frame.style.top = rect.top + 'px';
+      frame.style.width = rect.width + 'px';
+      frame.style.height = rect.height + 'px';
+
+      const img = document.createElement('img');
+      img.className = 'transition-image';
+      // Show default objective image for Obj1, otherwise use the current image
+      if (/objective-1\.html$/i.test(href)) {
+        img.src = 'images/Obj1B.jpeg';
+        img.alt = 'obj1B';
+      } else {
+        const currentImg = sourceFrame.querySelector('img');
+        img.src = currentImg ? currentImg.src : 'images/IMG_3724.jpeg';
+        img.alt = 'transition';
+      }
+
+      frame.appendChild(img);
+      document.body.appendChild(frame);
+      document.body.appendChild(overlay);
+
+      // Kick in overlay fade
+      requestAnimationFrame(() => overlay.classList.add('show'));
+
+      // Animate frame to fullscreen
+      const animMs = 650;
+      frame.style.transition = `left ${animMs}ms ease, top ${animMs}ms ease, width ${animMs}ms ease, height ${animMs}ms ease`;
+      requestAnimationFrame(() => {
+        frame.style.left = '0px';
+        frame.style.top = '0px';
+        frame.style.width = window.innerWidth + 'px';
+        frame.style.height = window.innerHeight + 'px';
+      });
+
+      // Bubble flourish for Objective 1 while enlarged
+      const startBubbles = () => {
+        if (!/objective-1\.html$/i.test(href)) return;
+        const waves = 2;
+        const perWave = 28;
+        for (let w = 0; w < waves; w++) {
+          setTimeout(() => {
+            for (let i = 0; i < perWave; i++) {
+              const x = Math.random() * window.innerWidth;
+              const y = Math.random() * window.innerHeight;
+              spawnBubblesAt(frame, x, y, { countMin: 3, countMax: 5, sizeMin: 12, sizeMax: 26, durMin: 1800, durMax: 3000, delayMax: 180 });
+            }
+          }, w * 220);
+        }
+      };
+
+      setTimeout(startBubbles, 300);
+
+      // Navigate after animation + flourish
+      setTimeout(() => {
+        window.location.href = href;
+      }, animMs + 600);
+    });
+  });
+}
+
+function spawnBubblesAt(container, clientX, clientY, opts = {}) {
+  const rect = container.getBoundingClientRect();
+  const localX = clientX;
+  const localY = clientY;
+  const countMin = opts.countMin ?? 6;
+  const countMax = opts.countMax ?? 9;
+  const sizeMin = opts.sizeMin ?? 12;
+  const sizeMax = opts.sizeMax ?? 24;
+  const durMin = opts.durMin ?? 1800;
+  const durMax = opts.durMax ?? 3000;
+  const delayMax = opts.delayMax ?? 240;
+  const count = countMin + Math.floor(Math.random() * (countMax - countMin + 1));
+  for (let i = 0; i < count; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = sizeMin + Math.floor(Math.random() * (sizeMax - sizeMin + 1));
+    const offsetX = (Math.random() - 0.5) * 50; // +/-25px
+    const offsetY = (Math.random() - 0.5) * 20; // +/-10px
+    const driftX = (Math.random() - 0.5) * 50;  // horizontal drift during rise
+    const rise = 120 + Math.floor(Math.random() * 60); // variable rise height
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
+    b.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
+    b.style.animationDuration = (durMin + Math.floor(Math.random() * (durMax - durMin + 1))) + 'ms';
+    b.style.animationDelay = (Math.floor(Math.random() * delayMax)) + 'ms';
+    b.style.setProperty('--driftX', driftX + 'px');
+    b.style.setProperty('--rise', rise + 'px');
+    container.appendChild(b);
+    b.addEventListener('animationend', () => b.remove());
+  }
 }
 
 // Fill control 
