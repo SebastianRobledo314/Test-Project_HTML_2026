@@ -41,17 +41,46 @@ function setup() {
     img.src = 'images/catbrush.png';
   })();
 
+  // Shared helper: accumulate movement distance and invoke a callback
+  function createMovementProgressTracker(pxPerStep, onStep) {
+    let lastX = null;
+    let lastY = null;
+    let accum = 0;
+    return {
+      handleMove(clientX, clientY) {
+        if (lastX != null && lastY != null) {
+          const dx = clientX - lastX;
+          const dy = clientY - lastY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          accum += dist;
+          while (accum >= pxPerStep) {
+            accum -= pxPerStep;
+            onStep();
+          }
+        }
+        lastX = clientX;
+        lastY = clientY;
+      },
+      reset() {
+        lastX = null;
+        lastY = null;
+        accum = 0;
+      }
+    };
+  }
+
   function setupInteractiveSwap(imgId) {
     const imgElem = document.getElementById(imgId);
     if (imgElem) {
       const isObj1Flow = /Obj1B\.jpeg$/i.test(imgElem.getAttribute('src') || '');
 
       if (isObj1Flow) {
-        // Scrub detection: count full horizontal passes inside the image.
-        const edgeThresholdPct = 0.15; // 15% from each edge
-        let leftSeen = false;
-        let rightSeen = false;
-        let lastSide = null; // 'left' or 'right'
+        // Scrub detection: total movement distance inside the image fills the bar.
+        const movementTracker = createMovementProgressTracker(220, () => {
+          if (clickCount < maxClicks) {
+            flashProgressAndMaybeComplete();
+          }
+        });
         // Trail bubble throttle and movement tracking
         let lastBubbleTime = 0;
         let lastBubbleX = null, lastBubbleY = null;
@@ -95,49 +124,24 @@ function setup() {
         }
 
         function flashProgressAndMaybeComplete() {
-          // Each scrub pass just advances the bar; keep Obj1B as the
-          // active image until completion, then switch straight to Obj1C.
+          // Each chunk of movement advances the bar; keep Obj1B as the
+          // active image until completion, then switch straight to Obj1C
+          // (handled in updateFill).
           clickCount++;
           if (clickCount > maxClicks) clickCount = maxClicks;
           updateFill(clickCount);
           triggerFlashIndicator();
           if (clickCount >= maxClicks) {
-            imgElem.src = 'images/obj1C.jpeg';
-            imgElem.alt = 'obj1C';
-            const desc = document.querySelector('.description');
-            if (desc) desc.textContent = 'complete! move on to the next task.';
             celebrateCompletionOnce();
           }
         }
 
-        function handlePoint(clientX) {
-          const rect = imgElem.getBoundingClientRect();
-          const width = rect.width;
-          const x = clientX - rect.left;
-          const leftEdge = x <= width * edgeThresholdPct;
-          const rightEdge = x >= width * (1 - edgeThresholdPct);
-
-          if (leftEdge) {
-            leftSeen = true;
-            lastSide = 'left';
-          }
-          if (rightEdge) {
-            rightSeen = true;
-            lastSide = 'right';
-          }
-
-          // Count a pass when both edges have been seen in the current sweep
-          if (leftSeen && rightSeen && clickCount < maxClicks) {
-            flashProgressAndMaybeComplete();
-            // Reset for next sweep, bias toward the current edge so a full
-            // opposite traversal is required again.
-            leftSeen = lastSide === 'left';
-            rightSeen = lastSide === 'right';
-          }
-        }
-
         imgElem.addEventListener('mousemove', (e) => {
-          handlePoint(e.clientX);
+          // Progress based on how far the cursor moves inside the image
+          if (clickCount < maxClicks) {
+            movementTracker.handleMove(e.clientX, e.clientY);
+          }
+
           // Emit trailing bubbles following soap cursor while moving
           const now = performance.now();
           const dx = lastBubbleX == null ? Infinity : Math.abs(e.clientX - lastBubbleX);
@@ -151,17 +155,13 @@ function setup() {
         });
 
         imgElem.addEventListener('mouseenter', () => {
-          leftSeen = false;
-          rightSeen = false;
-          lastSide = null;
+          movementTracker.reset();
           lastBubbleX = null;
           lastBubbleY = null;
         });
 
         imgElem.addEventListener('mouseleave', () => {
-          leftSeen = false;
-          rightSeen = false;
-          lastSide = null;
+          movementTracker.reset();
           const frame = imgElem.closest('.image-interactive');
           if (frame) frame.style.cursor = '';
         });
@@ -214,7 +214,10 @@ function setup() {
         imgElem.addEventListener('touchmove', (e) => {
           if (!e.touches || !e.touches.length) return;
           const t = e.touches[0];
-          handlePoint(t.clientX);
+          // Progress based on how far the touch moves inside the image
+          if (clickCount < maxClicks) {
+            movementTracker.handleMove(t.clientX, t.clientY);
+          }
           const now = performance.now();
           const dx = lastBubbleX == null ? Infinity : Math.abs(t.clientX - lastBubbleX);
           const dy = lastBubbleY == null ? Infinity : Math.abs(t.clientY - lastBubbleY);
@@ -228,6 +231,7 @@ function setup() {
 
         // Clear soap cursor on touch end
         imgElem.addEventListener('touchend', () => {
+          movementTracker.reset();
           const frame = imgElem.closest('.image-interactive');
           if (frame) frame.style.cursor = '';
         });
@@ -240,11 +244,16 @@ function setup() {
         }, { passive: true });
       } else if (/objective-2\.html$/i.test(window.location.pathname)) {
         // Objective 2: moving the cursor inside the image raises the Purr Bar
-        let lastX = null, lastY = null;
-        let progressAccum = 0; // how far the cursor has travelled
-        const pxPerStep = 250;  // larger = fills slower
         let lastFurTime = 0;
         const furIntervalMs = 120; // throttle fur emission
+
+        const movementTracker = createMovementProgressTracker(250, () => {
+          if (clickCount < maxClicks) {
+            clickCount++;
+            if (clickCount > maxClicks) clickCount = maxClicks;
+            updateFill(clickCount);
+          }
+        });
 
         function spawnFur(clientX, clientY, burst = false) {
           const frame = imgElem.closest('.image-interactive');
@@ -286,14 +295,12 @@ function setup() {
           if (frame && catBrushCursorUrl) {
             frame.style.cursor = `url('${catBrushCursorUrl}') 16 16, auto`;
           }
-          lastX = null;
-          lastY = null;
+          movementTracker.reset();
         });
         imgElem.addEventListener('mouseleave', () => {
           const frame = imgElem.closest('.image-interactive');
           if (frame) frame.style.cursor = '';
-          lastX = null;
-          lastY = null;
+          movementTracker.reset();
         });
 
         // Mouse movement inside image raises the bar
@@ -303,19 +310,9 @@ function setup() {
             spawnFur(e.clientX, e.clientY, false);
             lastFurTime = now;
           }
-          if (lastX != null && lastY != null && clickCount < maxClicks) {
-            const dx = e.clientX - lastX;
-            const dy = e.clientY - lastY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            progressAccum += dist;
-            while (progressAccum >= pxPerStep && clickCount < maxClicks) {
-              progressAccum -= pxPerStep;
-              clickCount++;
-              updateFill(clickCount);
-            }
+          if (clickCount < maxClicks) {
+            movementTracker.handleMove(e.clientX, e.clientY);
           }
-          lastX = e.clientX;
-          lastY = e.clientY;
         });
 
         // Touch movement inside image also raises the bar
@@ -327,19 +324,9 @@ function setup() {
             spawnFur(t.clientX, t.clientY, false);
             lastFurTime = now;
           }
-          if (lastX != null && lastY != null && clickCount < maxClicks) {
-            const dx = t.clientX - lastX;
-            const dy = t.clientY - lastY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            progressAccum += dist;
-            while (progressAccum >= pxPerStep && clickCount < maxClicks) {
-              progressAccum -= pxPerStep;
-              clickCount++;
-              updateFill(clickCount);
-            }
+          if (clickCount < maxClicks) {
+            movementTracker.handleMove(t.clientX, t.clientY);
           }
-          lastX = t.clientX;
-          lastY = t.clientY;
         }, { passive: true });
       } else {
         // Fallback behavior for other pages/content
@@ -365,9 +352,10 @@ function initTabTransitions() {
   tabs.forEach((a) => {
     a.addEventListener('click', (e) => {
       const href = a.getAttribute('href') || '';
-      // Only animate for objective pages, not home
+      // Animate for objective pages and Home
       const isObjective = /objective-\d+\.html$/i.test(href) || /objective-1\.html$/i.test(href);
-      if (!isObjective) return; // let default navigation occur
+      const isHome = /home\.html$/i.test(href);
+      if (!isObjective && !isHome) return; // let default navigation occur
       e.preventDefault();
 
       const isObj1 = /objective-1\.html$/i.test(href);
@@ -451,8 +439,8 @@ function initTabTransitions() {
       }
 
       // Navigate after animation + flourish
-      if (isObj2 || isObj1) {
-        // For Wash/Brush the Belly, grow, then shrink back into place, then navigate.
+      if (isObj2 || isObj1 || isHome) {
+        // For Wash/Brush the Belly and Home, grow, then shrink back into place, then navigate.
         setTimeout(() => {
           frame.style.left = rect.left + 'px';
           frame.style.top = rect.top + 'px';
