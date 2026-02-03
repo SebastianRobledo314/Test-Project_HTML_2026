@@ -27,6 +27,20 @@ function setup() {
     img.src = 'images/soap3.png';
   })();
 
+  // Prepare cat brush cursor for Objective 2
+  let catBrushCursorUrl = null;
+  (function preloadCatBrushCursor(){
+    const img = new Image();
+    img.onload = function() {
+      const c = document.createElement('canvas');
+      c.width = 48; c.height = 48;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, 48, 48);
+      catBrushCursorUrl = c.toDataURL();
+    };
+    img.src = 'images/catbrush.png';
+  })();
+
   function setupInteractiveSwap(imgId) {
     const imgElem = document.getElementById(imgId);
     if (imgElem) {
@@ -81,8 +95,8 @@ function setup() {
         }
 
         function flashProgressAndMaybeComplete() {
-          imgElem.src = 'images/obj1A.jpeg';
-          imgElem.alt = 'obj1A';
+          // Each scrub pass just advances the bar; keep Obj1B as the
+          // active image until completion, then switch straight to Obj1C.
           clickCount++;
           if (clickCount > maxClicks) clickCount = maxClicks;
           updateFill(clickCount);
@@ -93,11 +107,6 @@ function setup() {
             const desc = document.querySelector('.description');
             if (desc) desc.textContent = 'complete! move on to the next task.';
             celebrateCompletionOnce();
-          } else {
-            setTimeout(() => {
-              imgElem.src = 'images/Obj1B.jpeg';
-              imgElem.alt = 'obj1B';
-            }, 200);
           }
         }
 
@@ -223,17 +232,114 @@ function setup() {
           if (frame) frame.style.cursor = '';
         });
 
-        // Also allow click-to-progress
-        imgElem.addEventListener('click', (e) => {
-          spawnBubbles(e.clientX, e.clientY, { countMin: 6, countMax: 9, sizeMin: 12, sizeMax: 24, durMin: 1800, durMax: 3000, delayMax: 240 });
-          flashProgressAndMaybeComplete();
-        });
-
-        // Spawn bubbles on touch tap
+        // Spawn bubbles on touch tap (visual only; progress via scrubbing)
         imgElem.addEventListener('touchstart', (e) => {
           if (!e.touches || !e.touches.length) return;
           const t = e.touches[0];
           spawnBubbles(t.clientX, t.clientY, { countMin: 6, countMax: 9, sizeMin: 12, sizeMax: 24, durMin: 1800, durMax: 3000, delayMax: 240 });
+        }, { passive: true });
+      } else if (/objective-2\.html$/i.test(window.location.pathname)) {
+        // Objective 2: moving the cursor inside the image raises the Purr Bar
+        let lastX = null, lastY = null;
+        let progressAccum = 0; // how far the cursor has travelled
+        const pxPerStep = 250;  // larger = fills slower
+        let lastFurTime = 0;
+        const furIntervalMs = 120; // throttle fur emission
+
+        function spawnFur(clientX, clientY, burst = false) {
+          const frame = imgElem.closest('.image-interactive');
+          if (!frame) return;
+          const rect = frame.getBoundingClientRect();
+          const localX = clientX - rect.left;
+          const localY = clientY - rect.top;
+          const baseCount = burst ? 4 : 2;
+          const variance = burst ? 3 : 1;
+          const count = baseCount + Math.floor(Math.random() * variance);
+          for (let i = 0; i < count; i++) {
+            const f = document.createElement('div');
+            f.className = 'fur';
+            const size = 26 + Math.floor(Math.random() * 20); // big, visible
+            const offsetX = (Math.random() - 0.5) * 26;
+            const offsetY = (Math.random() - 0.5) * 12;
+            const driftStartX = (Math.random() - 0.5) * 22;
+            const driftMidX = driftStartX + (Math.random() - 0.5) * 28;
+            const driftEndX = driftMidX + (Math.random() - 0.5) * 36;
+            const fallY = 90 + Math.floor(Math.random() * 80);
+            const dur = 1600 + Math.floor(Math.random() * 1100);
+            f.style.width = size + 'px';
+            f.style.height = size + 'px';
+            f.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
+            f.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
+            f.style.setProperty('--driftStartX', driftStartX + 'px');
+            f.style.setProperty('--driftMidX', driftMidX + 'px');
+            f.style.setProperty('--driftEndX', driftEndX + 'px');
+            f.style.setProperty('--fallY', fallY + 'px');
+            f.style.setProperty('--dur', dur + 'ms');
+            frame.appendChild(f);
+            f.addEventListener('animationend', () => f.remove());
+          }
+        }
+
+        // Cursor change to cat brush inside image
+        imgElem.addEventListener('mouseenter', () => {
+          const frame = imgElem.closest('.image-interactive');
+          if (frame && catBrushCursorUrl) {
+            frame.style.cursor = `url('${catBrushCursorUrl}') 16 16, auto`;
+          }
+          lastX = null;
+          lastY = null;
+        });
+        imgElem.addEventListener('mouseleave', () => {
+          const frame = imgElem.closest('.image-interactive');
+          if (frame) frame.style.cursor = '';
+          lastX = null;
+          lastY = null;
+        });
+
+        // Mouse movement inside image raises the bar
+        imgElem.addEventListener('mousemove', (e) => {
+          const now = performance.now();
+          if (now - lastFurTime >= furIntervalMs) {
+            spawnFur(e.clientX, e.clientY, false);
+            lastFurTime = now;
+          }
+          if (lastX != null && lastY != null && clickCount < maxClicks) {
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            progressAccum += dist;
+            while (progressAccum >= pxPerStep && clickCount < maxClicks) {
+              progressAccum -= pxPerStep;
+              clickCount++;
+              updateFill(clickCount);
+            }
+          }
+          lastX = e.clientX;
+          lastY = e.clientY;
+        });
+
+        // Touch movement inside image also raises the bar
+        imgElem.addEventListener('touchmove', (e) => {
+          if (!e.touches || !e.touches.length) return;
+          const t = e.touches[0];
+          const now = performance.now();
+          if (now - lastFurTime >= furIntervalMs) {
+            spawnFur(t.clientX, t.clientY, false);
+            lastFurTime = now;
+          }
+          if (lastX != null && lastY != null && clickCount < maxClicks) {
+            const dx = t.clientX - lastX;
+            const dy = t.clientY - lastY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            progressAccum += dist;
+            while (progressAccum >= pxPerStep && clickCount < maxClicks) {
+              progressAccum -= pxPerStep;
+              clickCount++;
+              updateFill(clickCount);
+            }
+          }
+          lastX = t.clientX;
+          lastY = t.clientY;
         }, { passive: true });
       } else {
         // Fallback behavior for other pages/content
@@ -264,12 +370,13 @@ function initTabTransitions() {
       if (!isObjective) return; // let default navigation occur
       e.preventDefault();
 
+      const isObj1 = /objective-1\.html$/i.test(href);
+      const isObj2 = /objective-2\.html$/i.test(href);
+
       const sourceFrame = document.querySelector('.image-interactive');
       if (!sourceFrame) { window.location.href = href; return; }
       const rect = sourceFrame.getBoundingClientRect();
 
-      const overlay = document.createElement('div');
-      overlay.className = 'transition-overlay';
       const frame = document.createElement('div');
       frame.className = 'transition-frame image-interactive';
       frame.style.left = rect.left + 'px';
@@ -279,10 +386,13 @@ function initTabTransitions() {
 
       const img = document.createElement('img');
       img.className = 'transition-image';
-      // Show default objective image for Obj1, otherwise use the current image
+      // Show specific default images per objective when navigating
       if (/objective-1\.html$/i.test(href)) {
         img.src = 'images/Obj1B.jpeg';
         img.alt = 'obj1B';
+      } else if (/objective-2\.html$/i.test(href)) {
+        img.src = 'images/happy1.jpeg';
+        img.alt = 'happy1';
       } else {
         const currentImg = sourceFrame.querySelector('img');
         img.src = currentImg ? currentImg.src : 'images/IMG_3724.jpeg';
@@ -291,10 +401,6 @@ function initTabTransitions() {
 
       frame.appendChild(img);
       document.body.appendChild(frame);
-      document.body.appendChild(overlay);
-
-      // Kick in overlay fade
-      requestAnimationFrame(() => overlay.classList.add('show'));
 
       // Animate frame to fullscreen
       const animMs = 650;
@@ -322,12 +428,46 @@ function initTabTransitions() {
         }
       };
 
+      // Fur fall flourish for Objective 2 while enlarged
+      const startFurFall = () => {
+        if (!/objective-2\.html$/i.test(href)) return;
+        const waves = 4;
+        const perWave = 28;
+        for (let w = 0; w < waves; w++) {
+          setTimeout(() => {
+            for (let i = 0; i < perWave; i++) {
+              spawnFurAt(frame, 0, 0, { sizeMin: 22, sizeMax: 34, durMin: 1700, durMax: 2600, delayMax: 180 });
+            }
+          }, w * 200);
+        }
+      };
+
       setTimeout(startBubbles, 300);
+      // For Objective 2, start fur after the grow so the frame is fully large
+      if (isObj2) {
+        setTimeout(startFurFall, animMs + 40);
+      } else {
+        setTimeout(startFurFall, 300);
+      }
 
       // Navigate after animation + flourish
-      setTimeout(() => {
-        window.location.href = href;
-      }, animMs + 600);
+      if (isObj2 || isObj1) {
+        // For Wash/Brush the Belly, grow, then shrink back into place, then navigate.
+        setTimeout(() => {
+          frame.style.left = rect.left + 'px';
+          frame.style.top = rect.top + 'px';
+          frame.style.width = rect.width + 'px';
+          frame.style.height = rect.height + 'px';
+        }, animMs + 200);
+
+        setTimeout(() => {
+          window.location.href = href;
+        }, animMs * 2 + 350);
+      } else {
+        setTimeout(() => {
+          window.location.href = href;
+        }, animMs + 600);
+      }
     });
   });
 }
@@ -365,6 +505,50 @@ function spawnBubblesAt(container, clientX, clientY, opts = {}) {
   }
 }
 
+// Fur particles for transitions (e.g., Brush the Belly tab)
+function spawnFurAt(container, clientX, clientY, opts = {}) {
+  const rect = container.getBoundingClientRect();
+  const countMin = opts.countMin ?? 4;
+  const countMax = opts.countMax ?? 7;
+  const sizeMin = opts.sizeMin ?? 22;
+  const sizeMax = opts.sizeMax ?? 34;
+  const durMin = opts.durMin ?? 900;   // faster fall for transition
+  const durMax = opts.durMax ?? 1300;
+  const delayMax = opts.delayMax ?? 220;
+  const count = countMin + Math.floor(Math.random() * (countMax - countMin + 1));
+  for (let i = 0; i < count; i++) {
+    const f = document.createElement('div');
+    f.className = 'fur';
+    // Use straight-down fall animation for transition
+    f.style.animationName = 'furFall';
+    const size = sizeMin + Math.floor(Math.random() * (sizeMax - sizeMin + 1));
+    // Spread across the full width, start very near the top of the enlarged frame
+    const baseX = Math.random() * rect.width;
+    const baseY = rect.height * (0.02 + Math.random() * 0.08); // ~2–10% height
+    const offsetX = (Math.random() - 0.5) * 40;
+    const offsetY = (Math.random() - 0.5) * 20;
+    const driftStartX = (Math.random() - 0.5) * 18;
+    const driftMidX = driftStartX + (Math.random() - 0.5) * 26;
+    const driftEndX = driftMidX + (Math.random() - 0.5) * 32;
+    // Fall toward the lower part of the enlarged frame from this top band
+    const fallY = rect.height * (0.7 + Math.random() * 0.25);
+    const dur = durMin + Math.floor(Math.random() * (durMax - durMin + 1));
+    f.style.width = size + 'px';
+    f.style.height = size + 'px';
+    f.style.left = Math.max(0, Math.min(rect.width - size, baseX + offsetX)) + 'px';
+    f.style.top = Math.max(0, Math.min(rect.height - size, baseY + offsetY)) + 'px';
+    f.style.setProperty('--driftStartX', driftStartX + 'px');
+    f.style.setProperty('--driftMidX', driftMidX + 'px');
+    f.style.setProperty('--driftEndX', driftEndX + 'px');
+    f.style.setProperty('--fallY', fallY + 'px');
+    f.style.setProperty('--dur', dur + 'ms');
+    // Stagger start times so fur doesn't appear in straight lines
+    f.style.animationDelay = Math.floor(Math.random() * delayMax) + 'ms';
+    container.appendChild(f);
+    f.addEventListener('animationend', () => f.remove());
+  }
+}
+
 // Fill control 
 let clickCount = 0;
 const maxClicks = 10;
@@ -377,8 +561,8 @@ function updateFill(count) {
   fillEl.style.height = heightPct + '%';
 
   // interpolate color from green (0,200,0) to red (255,0,0)
-  const start = { r: 0, g: 180, b: 0 };
-  const end = { r: 255, g: 0, b: 0 };
+  const start = { r: 255, g: 0, b: 0 };
+  const end = { r: 0, g: 180, b: 0 };
   const r = Math.round(start.r + (end.r - start.r) * fraction);
   const g = Math.round(start.g + (end.g - start.g) * fraction);
   const b = Math.round(start.b + (end.b - start.b) * fraction);
@@ -389,15 +573,62 @@ function updateFill(count) {
     const imgElem = document.getElementById('interactive-img');
     if (imgElem) {
       const src = imgElem.getAttribute('src') || '';
-      const isObj1Stage = /Obj1B\.jpeg|obj1A\.jpeg/i.test(src);
-      const alreadyFinal = /obj1C\.jpeg/i.test(src);
-      if (isObj1Stage && !alreadyFinal) {
-        imgElem.src = 'images/obj1C.jpeg';
-        imgElem.alt = 'obj1C';
+      const onObj2 = /objective-2\.html$/i.test(window.location.pathname);
+      if (onObj2) {
+        imgElem.src = 'images/happy2.jpeg';
+        imgElem.alt = 'happy2';
+        // Big fur fall burst inside the image area on completion
+        const frame = imgElem.closest('.image-interactive');
+        if (frame) {
+          const rect = frame.getBoundingClientRect();
+          const batches = 3;
+          const perBatch = 12;
+          for (let b = 0; b < batches; b++) {
+            setTimeout(() => {
+              for (let i = 0; i < perBatch; i++) {
+                const fx = rect.left + Math.random() * rect.width;
+                const fy = rect.top + Math.random() * (rect.height * 0.4);
+                const f = document.createElement('div');
+                f.className = 'fur';
+                const size = 24 + Math.floor(Math.random() * 18);
+                const localX = fx - rect.left;
+                const localY = fy - rect.top;
+                const driftStartX = (Math.random() - 0.5) * 10;
+                const driftMidX = driftStartX + (Math.random() - 0.5) * 20;
+                const driftEndX = driftMidX + (Math.random() - 0.5) * 30;
+                const fallY = 120 + Math.floor(Math.random() * 100);
+                const dur = 1700 + Math.floor(Math.random() * 1200);
+                f.style.width = size + 'px';
+                f.style.height = size + 'px';
+                f.style.left = Math.max(0, Math.min(rect.width - size, localX)) + 'px';
+                f.style.top = Math.max(0, Math.min(rect.height - size, localY)) + 'px';
+                f.style.setProperty('--driftStartX', driftStartX + 'px');
+                f.style.setProperty('--driftMidX', driftMidX + 'px');
+                f.style.setProperty('--driftEndX', driftEndX + 'px');
+                f.style.setProperty('--fallY', fallY + 'px');
+                f.style.setProperty('--dur', dur + 'ms');
+                frame.appendChild(f);
+                f.addEventListener('animationend', () => f.remove());
+              }
+            }, b * 220);
+          }
+        }
+      } else {
+        const isObj1Stage = /Obj1B\.jpeg/i.test(src);
+        const alreadyFinal = /obj1C\.jpeg/i.test(src);
+        if (isObj1Stage && !alreadyFinal) {
+          imgElem.src = 'images/obj1C.jpeg';
+          imgElem.alt = 'obj1C';
+        }
       }
     }
     const desc = document.querySelector('.description');
-    if (desc) desc.textContent = 'complete! move on to the next task.';
+    if (desc) {
+      const onObj2 = /objective-2\.html$/i.test(window.location.pathname);
+      desc.textContent = onObj2
+        ? 'complete! move on to the next objective'
+        : 'complete! move on to the next task.';
+    }
   }
 }
 
