@@ -188,21 +188,21 @@ function setup() {
           const durMin = opts.durMin ?? 1800;
           const durMax = opts.durMax ?? 3000;
           const delayMax = opts.delayMax ?? 240;
-          const count = countMin + Math.floor(Math.random() * (countMax - countMin + 1));
+          const count = randInt(countMin, countMax);
           for (let i = 0; i < count; i++) {
             const b = document.createElement('div');
             b.className = 'bubble';
-            const size = sizeMin + Math.floor(Math.random() * (sizeMax - sizeMin + 1));
+            const size = randInt(sizeMin, sizeMax);
             const offsetX = (Math.random() - 0.5) * 30; // +/-15px
             const offsetY = (Math.random() - 0.5) * 8;  // +/-4px
             const driftX = (Math.random() - 0.5) * 40;  // horizontal drift during rise
             const rise = 120 + Math.floor(Math.random() * 60); // variable rise height
             b.style.width = size + 'px';
             b.style.height = size + 'px';
-            b.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
-            b.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
-            b.style.animationDuration = (durMin + Math.floor(Math.random() * (durMax - durMin + 1))) + 'ms';
-            b.style.animationDelay = (Math.floor(Math.random() * delayMax)) + 'ms';
+            b.style.left = clamp(localX + offsetX, 0, rect.width - size) + 'px';
+            b.style.top = clamp(localY + offsetY, 0, rect.height - size) + 'px';
+            b.style.animationDuration = (durMin + randInt(0, durMax - durMin)) + 'ms';
+            b.style.animationDelay = randInt(0, delayMax) + 'ms';
             b.style.setProperty('--driftX', driftX + 'px');
             b.style.setProperty('--rise', rise + 'px');
             frame.appendChild(b);
@@ -263,22 +263,22 @@ function setup() {
           const localY = clientY - rect.top;
           const baseCount = burst ? 4 : 2;
           const variance = burst ? 3 : 1;
-          const count = baseCount + Math.floor(Math.random() * variance);
+          const count = baseCount + randInt(0, variance - 1);
           for (let i = 0; i < count; i++) {
             const f = document.createElement('div');
             f.className = 'fur';
-            const size = 26 + Math.floor(Math.random() * 20); // big, visible
+            const size = 26 + randInt(0, 20); // big, visible
             const offsetX = (Math.random() - 0.5) * 26;
             const offsetY = (Math.random() - 0.5) * 12;
             const driftStartX = (Math.random() - 0.5) * 22;
             const driftMidX = driftStartX + (Math.random() - 0.5) * 28;
             const driftEndX = driftMidX + (Math.random() - 0.5) * 36;
             const fallY = 90 + Math.floor(Math.random() * 80);
-            const dur = 1600 + Math.floor(Math.random() * 1100);
+            const dur = 1600 + randInt(0, 1100);
             f.style.width = size + 'px';
             f.style.height = size + 'px';
-            f.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
-            f.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
+            f.style.left = clamp(localX + offsetX, 0, rect.width - size) + 'px';
+            f.style.top = clamp(localY + offsetY, 0, rect.height - size) + 'px';
             f.style.setProperty('--driftStartX', driftStartX + 'px');
             f.style.setProperty('--driftMidX', driftMidX + 'px');
             f.style.setProperty('--driftEndX', driftEndX + 'px');
@@ -375,10 +375,10 @@ function initTabTransitions() {
       const img = document.createElement('img');
       img.className = 'transition-image';
       // Show specific default images per objective when navigating
-      if (/objective-1\.html$/i.test(href)) {
+      if (isObj1) {
         img.src = 'images/Obj1B.jpeg';
         img.alt = 'obj1B';
-      } else if (/objective-2\.html$/i.test(href)) {
+      } else if (isObj2) {
         img.src = 'images/happy1.jpeg';
         img.alt = 'happy1';
       } else {
@@ -402,7 +402,7 @@ function initTabTransitions() {
 
       // Bubble flourish for Objective 1 while enlarged
       const startBubbles = () => {
-        if (!/objective-1\.html$/i.test(href)) return;
+        if (!isObj1) return;
         const waves = 2;
         const perWave = 28;
         for (let w = 0; w < waves; w++) {
@@ -418,7 +418,7 @@ function initTabTransitions() {
 
       // Fur fall flourish for Objective 2 while enlarged
       const startFurFall = () => {
-        if (!/objective-2\.html$/i.test(href)) return;
+        if (!isObj2) return;
         const waves = 4;
         const perWave = 28;
         for (let w = 0; w < waves; w++) {
@@ -460,6 +460,15 @@ function initTabTransitions() {
   });
 }
 
+// Small utility helpers reused across particle effects
+function randInt(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function spawnBubblesAt(container, clientX, clientY, opts = {}) {
   const rect = container.getBoundingClientRect();
   const localX = clientX;
@@ -471,21 +480,21 @@ function spawnBubblesAt(container, clientX, clientY, opts = {}) {
   const durMin = opts.durMin ?? 1800;
   const durMax = opts.durMax ?? 3000;
   const delayMax = opts.delayMax ?? 240;
-  const count = countMin + Math.floor(Math.random() * (countMax - countMin + 1));
+  const count = randInt(countMin, countMax);
   for (let i = 0; i < count; i++) {
     const b = document.createElement('div');
     b.className = 'bubble';
-    const size = sizeMin + Math.floor(Math.random() * (sizeMax - sizeMin + 1));
+    const size = randInt(sizeMin, sizeMax);
     const offsetX = (Math.random() - 0.5) * 50; // +/-25px
     const offsetY = (Math.random() - 0.5) * 20; // +/-10px
     const driftX = (Math.random() - 0.5) * 50;  // horizontal drift during rise
     const rise = 120 + Math.floor(Math.random() * 60); // variable rise height
     b.style.width = size + 'px';
     b.style.height = size + 'px';
-    b.style.left = Math.max(0, Math.min(rect.width - size, localX + offsetX)) + 'px';
-    b.style.top = Math.max(0, Math.min(rect.height - size, localY + offsetY)) + 'px';
-    b.style.animationDuration = (durMin + Math.floor(Math.random() * (durMax - durMin + 1))) + 'ms';
-    b.style.animationDelay = (Math.floor(Math.random() * delayMax)) + 'ms';
+    b.style.left = clamp(localX + offsetX, 0, rect.width - size) + 'px';
+    b.style.top = clamp(localY + offsetY, 0, rect.height - size) + 'px';
+    b.style.animationDuration = (durMin + randInt(0, durMax - durMin)) + 'ms';
+    b.style.animationDelay = randInt(0, delayMax) + 'ms';
     b.style.setProperty('--driftX', driftX + 'px');
     b.style.setProperty('--rise', rise + 'px');
     container.appendChild(b);
