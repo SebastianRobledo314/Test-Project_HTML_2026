@@ -843,8 +843,8 @@ function updateFill(count) {
       const onObj2 = /objective-2\.html$/i.test(window.location.pathname);
       const onObj3 = /objective-3\.html$/i.test(window.location.pathname);
       if (onObj2) {
-        imgElem.src = 'images/happy2.jpeg';
-        imgElem.alt = 'happy2';
+        imgElem.src = 'images/Happy2.jpeg';
+        imgElem.alt = 'Happy2';
         // Big fur fall burst inside the image area on completion
         const frame = imgElem.closest('.image-interactive');
         if (frame) {
