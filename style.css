@@ -1,7 +1,24 @@
-/* Image border with responsive sizing */
+/* ============================================
+   WASH MY CAT SIM - Stylesheet
+   ============================================
+   
+   TABLE OF CONTENTS:
+   1. Interactive Image Container
+   2. Tab Navigation
+   3. Animations & Transitions
+   4. Particle Effects (Bubbles, Fur, Catfood)
+   5. Layout & Container
+   6. Meter Bar
+   7. Objective 3: Drag & Drop Elements
+   8. Responsive Design
+   ============================================ */
+
+/* ============================================
+   1. INTERACTIVE IMAGE CONTAINER
+   ============================================ */
 .image-interactive {
   width: 100%;
-  max-width: 100%; /* let the border stretch with the layout */
+  max-width: 100%;
   height: auto;
   border: 4px solid rgb(210, 210, 210);
   border-radius: 8px;
@@ -10,7 +27,7 @@
   align-items: center;
   justify-content: center;
   background: #fff;
-  position: relative; /* enable overlay indicator */
+  position: relative;
 }
 
 .image-interactive img {
@@ -22,9 +39,12 @@
   display: block;
   cursor: inherit;
   flex-shrink: 0;
+  border-radius: 8px;
 }
 
-/* Tabs under description */
+/* ============================================
+   2. TAB NAVIGATION
+   ============================================ */
 .tabs-row {
   margin-top: 4px;
   flex-shrink: 0;
@@ -34,12 +54,12 @@
   display: flex;
   gap: 8px;
   align-items: flex-end;
-  flex-wrap: wrap; /* allow tabs to wrap on small screens */
+  flex-wrap: wrap;
 }
 
 .tab {
   display: inline-block;
-  padding: 6px 10px;
+  padding: 10px 16px;
   border: 1px solid #458093;
   border-bottom: none;
   border-radius: 8px 8px 0 0;
@@ -48,7 +68,10 @@
   text-decoration: none;
   cursor: inherit;
   transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.4);
 }
 
 .tab:hover {
@@ -57,6 +80,14 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.25);
 }
 
+.tab.active {
+  background: #0090C1;
+  border-color: #005f7a;
+}
+
+/* ============================================
+   3. ANIMATIONS & TRANSITIONS
+   ============================================ */
 .transition-frame {
   position: fixed;
   border-radius: 12px;
@@ -70,11 +101,6 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-}
-
-.tab.active {
-  background: #0090C1;
-  border-color: #005f7a;
 }
 
 /* Scrub flash indicator overlay */
@@ -92,7 +118,11 @@
   100% { opacity: 0; }
 }
 
-/* Floating bubbles on click */
+/* ============================================
+   4. PARTICLE EFFECTS
+   ============================================ */
+   
+/* Floating bubbles */
 .bubble {
   position: absolute;
   width: 16px;
@@ -144,7 +174,10 @@
   10% { opacity: 1; }
   100% { transform: translate(var(--driftEndX, 0px), var(--fallY, 200px)); opacity: 0; }
 }
-@import url('https://fonts.googleapis.com/css2?family=Delicious+Handrawn&display=swap');
+
+/* ============================================
+   5. LAYOUT & CONTAINER
+   ============================================ */
 
 .layout-row {
   display: flex;
@@ -160,7 +193,7 @@
   display: flex;
   flex-direction: column;
   flex: 3;
-  gap: 1vh;
+  gap: 2vh;
   min-height: 0;
   overflow: hidden;
 }
@@ -170,24 +203,24 @@
   color: #043653;
   font-size: 1.2rem;
   border-radius: 12px;
-  padding: 12px 8px;
-  min-width: 56px;
+  padding: 16px 14px;
+  min-width: 95px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  flex: 0 0 56px;
+  flex: 0 0 95px;
   box-shadow: 0 2px 8px rgba(0,0,0,100);
   height: auto;
   margin-left: 24px;
 }
 
 .meter-bar span {
-  font-family: 'Delicious Handrawn', sans-serif;
-  font-size: 11px; /* smaller font for bar label */
+  font-family: Impact, 'Arial Black', 'Franklin Gothic Bold', sans-serif;
+  font-size: 17px;
   font-weight: bold;
-  color: #043653;
-  letter-spacing: 0.3px;
+  color: #ffffff;
+  letter-spacing: 0.5px;
   white-space: normal; /* allow wrapping inside narrow bar */
   overflow-wrap: anywhere; /* break long words if needed */
   word-break: break-word; /* legacy fallback */
@@ -195,6 +228,8 @@
   max-width: 100%;
   margin-bottom: 8px;
   display: block;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.5);
 }
 
 /* Two-line meter label layout */
@@ -236,7 +271,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  font-family: 'Delicious Handrawn', cursive;
+  font-family: Impact, 'Arial Black', 'Franklin Gothic Bold', sans-serif;
   background: #012d3a;
   height: 100vh;
   overflow: hidden; /* no scrolling */
@@ -271,9 +306,9 @@ html, body {
 
 .title-objective {
   background: #0e4a5c;
-  color: #b6faff;
-  font-size: 1.2rem;
-  padding: 6px 12px;
+  color: #ffffff;
+  font-size: 2rem;
+  padding: 16px 20px;
   border-radius: 12px;
   flex: 0 0 auto; /* Stop expanding vertically */
   display: flex;
@@ -282,6 +317,9 @@ html, body {
   text-align: center;
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0,0,0,100);
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.5);
 }
 
 .main-content-row {
@@ -300,7 +338,7 @@ html, body {
   background: #18344a;
   color: #b6faff;
   font-size: 1.2rem;
-  font-family: 'Delicious Handrawn', cursive;
+  font-family: Impact, 'Arial Black', 'Franklin Gothic Bold', sans-serif;
   border-radius: 12px;
   flex: 1; /* Fill the main content row */
   width: 100%;
@@ -323,11 +361,14 @@ html, body {
 .description {
   background: #2bb6d6;
   color: #043653;
-  font-size: 1.2rem;
+  font-size: 1.6rem;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,100);
   flex-shrink: 0;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+  -webkit-text-stroke: 0.5px rgba(0, 54, 83, 0.3);
 }
 
 /* Responsive tweaks for smaller screens */
@@ -363,9 +404,75 @@ html, body {
   }
 }
 
+/* Draggable cat food for Objective 3 */
+.catfood-draggable {
+  width: 80px;
+  height: 80px;
+  margin-top: 16px;
+  cursor: grab;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  -webkit-user-drag: element;
+}
 
+.catfood-draggable:hover {
+  transform: scale(1.1);
+}
 
+.catfood-draggable:active {
+  cursor: grabbing;
+}
 
+.catfood-draggable.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
 
+.catfood-draggable.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 
+/* Drop zone highlight when dragging over */
+.image-interactive.drag-over {
+  border-color: #00ff00;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
 
+/* Falling catfood animation */
+.catfood-falling {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+  animation: fallIntoMouth 1s ease-in forwards;
+  z-index: 1000;
+}
+
+@keyframes fallIntoMouth {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* Catfood transition particles */
+.catfood-particle {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  opacity: 0;
+  animation: catfoodFallTransition var(--dur, 2000ms) ease-out forwards;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+@keyframes catfoodFallTransition {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(var(--fallY, 400px)) rotate(var(--rotate, 360deg)); opacity: 0; }
+}

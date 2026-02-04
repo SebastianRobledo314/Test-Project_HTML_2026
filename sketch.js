@@ -1,76 +1,98 @@
-// Global audio variables
+// ============================================
+// WASH MY CAT SIM - Main Script
+// ============================================
+// This file handles all interactive elements for the cat care simulation game
+// 
+// STRUCTURE:
+// 1. Debug Mode & Global Variables
+// 2. Helper Functions (cursor, audio, utilities)
+// 3. Setup Function (p5.js entry point)
+// 4. Objective-Specific Functions:
+//    - Objective 1: Washing (soap scrubbing)
+//    - Objective 2: Brushing (movement-based)
+//    - Objective 3: Feeding (drag & drop)
+// 5. Particle Effects (bubbles, fur, catfood)
+// 6. Progress Bar & Completion Logic
+// 7. Tab Transition Animations
+// ============================================
+
+// ============================================
+// DEBUG MODE - Set to true for console logging
+// ============================================
+const DEBUG_MODE = true;
+
+function debugLog(...args) {
+  if (DEBUG_MODE) console.log('[DEBUG]', ...args);
+}
+
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
 let purringSound = null;
 let washingSound = null;
 let celebrationSound = null;
+let nomSound = null;
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Consolidated cursor loader
+function loadCursor(imagePath, size = 72, callback) {
+  debugLog(`Loading cursor: ${imagePath}`);
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    const cursorUrl = canvas.toDataURL();
+    debugLog(`Cursor loaded successfully: ${imagePath}`);
+    callback(cursorUrl, size / 2);
+  };
+  img.onerror = () => debugLog(`Failed to load cursor: ${imagePath}`);
+  img.src = imagePath;
+}
+
+// Consolidated audio loader
+function loadAudio(path, volume, successCallback) {
+  debugLog(`Loading audio: ${path}`);
+  return loadSound(path, 
+    () => {
+      debugLog(`Audio loaded: ${path}`);
+      successCallback.setVolume(volume);
+    }, 
+    (err) => debugLog(`Error loading ${path}:`, err)
+  );
+}
 
 function setup() {
   createCanvas(400, 400);
+  debugLog('Setup initialized');
   
-  // Load audio files
-  // Load purring sound for Objective 2 (brushing)
-  purringSound = loadSound('Audio/purring.wav', () => {
-    console.log('Purring sound loaded');
-    purringSound.setVolume(0.4);
-  }, (err) => {
-    console.log('Error loading purring sound:', err);
-  });
+  // Load all audio files with consolidated function
+  purringSound = loadAudio('Audio/purring.wav', 0.4, purringSound);
+  washingSound = loadAudio('Audio/Squeaky.mp3', 0.5, washingSound);
+  celebrationSound = loadAudio('Audio/Celebration.mp3', 0.6, celebrationSound);
+  nomSound = loadAudio('Audio/Nom Nom Nom.mp3', 0.3, nomSound);
   
-  // Load squeaky washing sound for Objective 1 (washing)
-  washingSound = loadSound('Audio/Squeaky.mp3', () => {
-    console.log('Washing sound loaded');
-    washingSound.setVolume(0.5);
-  }, (err) => {
-    console.log('Error loading washing sound:', err);
-  });
-  
-  // Load celebration sound for completion
-  celebrationSound = loadSound('Audio/Celebration.mp3', () => {
-    console.log('Celebration sound loaded');
-    celebrationSound.setVolume(0.6);
-  }, (err) => {
-    console.log('Error loading celebration sound:', err);
-  });
-  
-  // Custom cursor setup 
-  let img = new Image();
-  img.onload = function() {
-    let canvas = document.createElement('canvas');
-    canvas.width = 72;
-    canvas.height = 72;
-    let ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, 72, 72);
-    let cursorUrl = canvas.toDataURL();
-    document.body.style.cursor = `url('${cursorUrl}') 36 36, auto`;
-  };
-  img.src = 'images/Paw.png';
-
-  // Prepare soap cursor for use inside the image frame
+  // Load all cursors with consolidated function
   let soapCursorUrl = null;
-  (function preloadSoapCursor(){
-    const img = new Image();
-    img.onload = function() {
-      const c = document.createElement('canvas');
-      c.width = 72; c.height = 72;
-      const cx = c.getContext('2d');
-      cx.drawImage(img, 0, 0, 72, 72);
-      soapCursorUrl = c.toDataURL();
-    };
-    img.src = 'images/soap3.png';
-  })();
-
-  // Prepare cat brush cursor for Objective 2
   let catBrushCursorUrl = null;
-  (function preloadCatBrushCursor(){
-    const img = new Image();
-    img.onload = function() {
-      const c = document.createElement('canvas');
-      c.width = 72; c.height = 72;
-      const cx = c.getContext('2d');
-      cx.drawImage(img, 0, 0, 72, 72);
-      catBrushCursorUrl = c.toDataURL();
-    };
-    img.src = 'images/catbrush.png';
-  })();
+  
+  loadCursor('images/Paw.png', 72, (cursorUrl, hotspot) => {
+    document.body.style.cursor = `url('${cursorUrl}') ${hotspot} ${hotspot}, auto`;
+    debugLog('Paw cursor applied');
+  });
+  
+  loadCursor('images/soap3.png', 72, (cursorUrl) => {
+    soapCursorUrl = cursorUrl;
+  });
+  
+  loadCursor('images/catbrush.png', 72, (cursorUrl) => {
+    catBrushCursorUrl = cursorUrl;
+  });
 
   // Shared helper: accumulate movement distance and invoke a callback
   function createMovementProgressTracker(pxPerStep, onStep) {
@@ -100,12 +122,133 @@ function setup() {
     };
   }
 
+  // Objective 3: Drag and drop feeding system
+  function setupDragAndDropFeeding(imgElem) {
+    debugLog('Setting up drag and drop feeding for Objective 3');
+    const catfoodElem = document.getElementById('catfood');
+    if (!catfoodElem) {
+      debugLog('Catfood element not found');
+      return;
+    }
+    
+    const imageFrame = imgElem.closest('.image-interactive');
+    if (!imageFrame) {
+      debugLog('Image frame not found');
+      return;
+    }
+    
+    let isDragging = false;
+    let isFeeding = false;
+    let feedCount = 0;
+    const maxFeeds = 5;
+    
+    // Dragstart - when user starts dragging the catfood
+    catfoodElem.addEventListener('dragstart', (e) => {
+      debugLog('Catfood drag started');
+      isDragging = true;
+      catfoodElem.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', catfoodElem.innerHTML);
+    });
+    
+    // Dragend - when drag operation ends
+    catfoodElem.addEventListener('dragend', (e) => {
+      debugLog('Catfood drag ended');
+      isDragging = false;
+      catfoodElem.classList.remove('dragging');
+    });
+    
+    // Dragover - when dragging over the image
+    imageFrame.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      imageFrame.classList.add('drag-over');
+      // Change to mouth open image when dragging over
+      if (!isFeeding && (imgElem.src.includes('Look hungry') || imgElem.src.includes('Look%20hungry'))) {
+        imgElem.src = 'images/Mouthopen.jpeg';
+      }
+    });
+    
+    // Dragleave - when leaving the drop zone
+    imageFrame.addEventListener('dragleave', (e) => {
+      // Only trigger if actually leaving the frame (not entering child elements)
+      if (e.target === imageFrame) {
+        imageFrame.classList.remove('drag-over');
+        // Change back to hungry if not feeding
+        if (!isFeeding && imgElem.src.includes('Mouthopen')) {
+          imgElem.src = 'images/Look hungry.jpeg';
+        }
+      }
+    });
+    
+    // Drop - when catfood is dropped on the image
+    imageFrame.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imageFrame.classList.remove('drag-over');
+      
+      debugLog(`Catfood dropped. Feed count: ${feedCount}/${maxFeeds}`);
+      
+      if (isFeeding || feedCount >= maxFeeds) {
+        debugLog('Already feeding or max feeds reached');
+        return;
+      }
+      
+      isFeeding = true;
+      
+      // Hide catfood temporarily
+      catfoodElem.classList.add('hidden');
+      
+      // Create falling catfood animation
+      const rect = imageFrame.getBoundingClientRect();
+      const fallingFood = document.createElement('img');
+      fallingFood.src = 'images/catfood.png';
+      fallingFood.className = 'catfood-falling';
+      fallingFood.style.left = (e.clientX - rect.left - 30) + 'px';
+      fallingFood.style.top = (e.clientY - rect.top - 30) + 'px';
+      imageFrame.appendChild(fallingFood);
+      
+      // Remove falling animation after completion
+      setTimeout(() => fallingFood.remove(), 1000);
+      
+      // Change to nom image
+      imgElem.src = 'images/nom.jpeg';
+      
+      // Play nom nom nom sound
+      if (nomSound) {
+        debugLog('Playing nom sound');
+        nomSound.play();
+      }
+      
+      // Increment feed counter and update bar (add 5 per feed to reach 25 in 5 feeds)
+      feedCount++;
+      clickCount += 5;
+      if (clickCount > maxClicks) clickCount = maxClicks;
+      debugLog(`Feed complete. Total feeds: ${feedCount}, Click count: ${clickCount}`);
+      updateFill(clickCount);
+      
+      // After 2 seconds, reset to hungry
+      setTimeout(() => {
+        if (feedCount < maxFeeds) {
+          imgElem.src = 'images/Look hungry.jpeg';
+          catfoodElem.classList.remove('hidden');
+        } else {
+          // All feeds complete, show final image
+          imgElem.src = 'images/fat.jpeg';
+        }
+        isFeeding = false;
+      }, 2000);
+    });
+  }
+
   function setupInteractiveSwap(imgId) {
+    debugLog(`Setting up interactive swap for: ${imgId}`);
     const imgElem = document.getElementById(imgId);
     if (imgElem) {
       const isObj1Flow = /Obj1B\.jpeg$/i.test(imgElem.getAttribute('src') || '');
+      debugLog(`Objective 1 flow detected: ${isObj1Flow}`);
 
       if (isObj1Flow) {
+        debugLog('Initializing Objective 1 (Wash) interactions');
         // Scrub detection: total movement distance inside the image fills the bar.
         const movementTracker = createMovementProgressTracker(600, () => {
           if (clickCount < maxClicks) {
@@ -383,6 +526,9 @@ function setup() {
             }
           }
         }, { passive: true });
+      } else if (/objective-3\.html$/i.test(window.location.pathname)) {
+        // Objective 3: Drag and drop cat food to feed the cat
+        setupDragAndDropFeeding(imgElem);
       } else {
         // Fallback behavior for other pages/content
         imgElem.addEventListener('click', () => {
@@ -399,14 +545,22 @@ function setup() {
 
   // Initialize objective tab transitions
   initTabTransitions();
+  
+  debugLog('Setup complete');
 }
 // Transition overlay logic for tab navigation
 function initTabTransitions() {
+  debugLog('Initializing tab transitions');
   const tabs = document.querySelectorAll('.tabs .tab');
-  if (!tabs.length) return;
+  if (!tabs.length) {
+    debugLog('No tabs found');
+    return;
+  }
+  debugLog(`Found ${tabs.length} tabs`);
   tabs.forEach((a) => {
     a.addEventListener('click', (e) => {
       const href = a.getAttribute('href') || '';
+      debugLog(`Tab clicked: ${href}`);
       // Animate for objective pages and Home
       const isObjective = /objective-\d+\.html$/i.test(href) || /objective-1\.html$/i.test(href);
       const isHome = /home\.html$/i.test(href);
@@ -415,6 +569,7 @@ function initTabTransitions() {
 
       const isObj1 = /objective-1\.html$/i.test(href);
       const isObj2 = /objective-2\.html$/i.test(href);
+      const isObj3 = /objective-3\.html$/i.test(href);
 
       const sourceFrame = document.querySelector('.image-interactive');
       if (!sourceFrame) { window.location.href = href; return; }
@@ -436,6 +591,9 @@ function initTabTransitions() {
       } else if (isObj2) {
         img.src = 'images/happy1.jpeg';
         img.alt = 'happy1';
+      } else if (isObj3) {
+        img.src = 'images/fat.jpeg';
+        img.alt = 'fat';
       } else {
         const currentImg = sourceFrame.querySelector('img');
         img.src = currentImg ? currentImg.src : 'images/IMG_3724.jpeg';
@@ -484,6 +642,22 @@ function initTabTransitions() {
           }, w * 200);
         }
       };
+      
+      // Catfood falling flourish for Objective 3 while enlarged
+      const startCatfoodFall = () => {
+        if (!isObj3) return;
+        const waves = 4;
+        const perWave = 20;
+        for (let w = 0; w < waves; w++) {
+          setTimeout(() => {
+            for (let i = 0; i < perWave; i++) {
+              const x = Math.random() * window.innerWidth;
+              const y = Math.random() * (window.innerHeight * 0.3);
+              spawnCatfoodAt(frame, x, y);
+            }
+          }, w * 250);
+        }
+      };
 
       setTimeout(startBubbles, 300);
       // For Objective 2, start fur after the grow so the frame is fully large
@@ -492,10 +666,14 @@ function initTabTransitions() {
       } else {
         setTimeout(startFurFall, 300);
       }
+      // For Objective 3, start catfood after the grow
+      if (isObj3) {
+        setTimeout(startCatfoodFall, animMs + 40);
+      }
 
       // Navigate after animation + flourish
-      if (isObj2 || isObj1 || isHome) {
-        // For Wash/Brush the Belly and Home, grow, then shrink back into place, then navigate.
+      if (isObj2 || isObj1 || isHome || isObj3) {
+        // For all objectives and Home, grow, then shrink back into place, then navigate.
         setTimeout(() => {
           frame.style.left = rect.left + 'px';
           frame.style.top = rect.top + 'px';
@@ -601,14 +779,43 @@ function spawnFurAt(container, clientX, clientY, opts = {}) {
   }
 }
 
+// Catfood particles for Objective 3 transition
+function spawnCatfoodAt(container, x, y) {
+  const catfood = document.createElement('img');
+  catfood.src = 'images/catfood.png';
+  catfood.className = 'catfood-particle';
+  
+  const size = 30 + Math.floor(Math.random() * 30); // 30-60px
+  const fallY = 300 + Math.floor(Math.random() * 400); // fall 300-700px
+  const rotate = 180 + Math.floor(Math.random() * 360); // random rotation
+  const dur = 1500 + Math.floor(Math.random() * 1000); // 1.5-2.5s
+  const delay = Math.floor(Math.random() * 300); // stagger start
+  
+  catfood.style.width = size + 'px';
+  catfood.style.height = size + 'px';
+  catfood.style.left = x + 'px';
+  catfood.style.top = y + 'px';
+  catfood.style.setProperty('--fallY', fallY + 'px');
+  catfood.style.setProperty('--rotate', rotate + 'deg');
+  catfood.style.setProperty('--dur', dur + 'ms');
+  catfood.style.animationDelay = delay + 'ms';
+  
+  container.appendChild(catfood);
+  catfood.addEventListener('animationend', () => catfood.remove());
+}
+
 // Fill control 
 let clickCount = 0;
 const maxClicks = 25;
 let celebrationPlayed = false;
 
 function updateFill(count) {
+  debugLog(`Updating fill: ${count}/${maxClicks} (${Math.round(count/maxClicks*100)}%)`);
   const fillEl = document.querySelector('.meter-fill');
-  if (!fillEl) return;
+  if (!fillEl) {
+    debugLog('Fill element not found');
+    return;
+  }
   const fraction = count / maxClicks;
   const heightPct = Math.round(fraction * 100);
   fillEl.style.height = heightPct + '%';
@@ -623,8 +830,10 @@ function updateFill(count) {
 
   // When full, reveal final image and completion text without requiring a click
   if (fraction >= 1) {
+    debugLog('Objective complete! Triggering celebration');
     // Play celebration sound once for all objectives
     if (!celebrationPlayed && typeof celebrationSound !== 'undefined' && celebrationSound) {
+      debugLog('Playing celebration sound');
       celebrationSound.play();
       celebrationPlayed = true;
     }
@@ -632,6 +841,7 @@ function updateFill(count) {
     if (imgElem) {
       const src = imgElem.getAttribute('src') || '';
       const onObj2 = /objective-2\.html$/i.test(window.location.pathname);
+      const onObj3 = /objective-3\.html$/i.test(window.location.pathname);
       if (onObj2) {
         imgElem.src = 'images/happy2.jpeg';
         imgElem.alt = 'happy2';
@@ -669,6 +879,43 @@ function updateFill(count) {
                 f.addEventListener('animationend', () => f.remove());
               }
             }, b * 220);
+          }
+        }
+      } else if (onObj3) {
+        // Catfood falling burst on Objective 3 completion
+        const frame = imgElem.closest('.image-interactive');
+        if (frame) {
+          const rect = frame.getBoundingClientRect();
+          const batches = 4;
+          const perBatch = 15;
+          for (let b = 0; b < batches; b++) {
+            setTimeout(() => {
+              for (let i = 0; i < perBatch; i++) {
+                const x = rect.left + Math.random() * rect.width;
+                const y = rect.top - 50; // Start above the frame
+                const catfood = document.createElement('img');
+                catfood.src = 'images/catfood.png';
+                catfood.className = 'catfood-particle';
+                
+                const size = 35 + Math.floor(Math.random() * 25);
+                const fallY = rect.height + 100;
+                const rotate = Math.floor(Math.random() * 720);
+                const dur = 1800 + Math.floor(Math.random() * 800);
+                const delay = Math.floor(Math.random() * 200);
+                
+                catfood.style.width = size + 'px';
+                catfood.style.height = size + 'px';
+                catfood.style.left = (x - rect.left) + 'px';
+                catfood.style.top = '-50px';
+                catfood.style.setProperty('--fallY', fallY + 'px');
+                catfood.style.setProperty('--rotate', rotate + 'deg');
+                catfood.style.setProperty('--dur', dur + 'ms');
+                catfood.style.animationDelay = delay + 'ms';
+                
+                frame.appendChild(catfood);
+                catfood.addEventListener('animationend', () => catfood.remove());
+              }
+            }, b * 250);
           }
         }
       } else {
