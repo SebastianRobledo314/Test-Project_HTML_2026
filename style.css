@@ -1,5 +1,27 @@
-/* Image border and sizing rules moved to bottom */
-/* Top rules deleted */
+/* Image border with responsive sizing */
+.image-interactive {
+  width: 100%;
+  max-width: 100%; /* let the border stretch with the layout */
+  height: auto;
+  border: 4px solid rgb(210, 210, 210);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  position: relative; /* enable overlay indicator */
+}
+
+.image-interactive img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  cursor: inherit;
+}
 
 /* Tabs under description */
 .tabs-row {
@@ -279,30 +301,17 @@ html, body {
   font-size: 1.2rem;
   font-family: 'Delicious Handrawn', cursive;
   border-radius: 12px;
-  border: 4px solid rgb(210, 210, 210); /* Restored border */
-  box-sizing: border-box; /* Ensure padding/border don't overflow */
   flex: 1; /* Fill the main content row */
   width: 100%;
-  height: auto; 
+  height: auto; /* Allow auto height based on content or flexible space */
   min-height: 0;
-  max-height: 96%;
+  max-height: 96%; /* Slightly shorter to avoid visual crowding/overlap */
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,100);
   padding: 12px;
   margin-top: 0;
-  position: relative; /* ensure overlay works */
-}
-
-.image-interactive img {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  display: block;
-  cursor: inherit;
 }
 
 .description-row {
