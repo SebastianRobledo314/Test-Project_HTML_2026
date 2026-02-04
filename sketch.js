@@ -1,15 +1,46 @@
+// Global audio variables
+let purringSound = null;
+let washingSound = null;
+let celebrationSound = null;
+
 function setup() {
   createCanvas(400, 400);
+  
+  // Load audio files
+  // Load purring sound for Objective 2 (brushing)
+  purringSound = loadSound('Audio/purring.wav', () => {
+    console.log('Purring sound loaded');
+    purringSound.setVolume(0.4);
+  }, (err) => {
+    console.log('Error loading purring sound:', err);
+  });
+  
+  // Load squeaky washing sound for Objective 1 (washing)
+  washingSound = loadSound('Audio/Squeaky.mp3', () => {
+    console.log('Washing sound loaded');
+    washingSound.setVolume(0.5);
+  }, (err) => {
+    console.log('Error loading washing sound:', err);
+  });
+  
+  // Load celebration sound for completion
+  celebrationSound = loadSound('Audio/Celebration.mp3', () => {
+    console.log('Celebration sound loaded');
+    celebrationSound.setVolume(0.6);
+  }, (err) => {
+    console.log('Error loading celebration sound:', err);
+  });
+  
   // Custom cursor setup 
   let img = new Image();
   img.onload = function() {
     let canvas = document.createElement('canvas');
-    canvas.width = 48;
-    canvas.height = 48;
+    canvas.width = 72;
+    canvas.height = 72;
     let ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, 48, 48);
+    ctx.drawImage(img, 0, 0, 72, 72);
     let cursorUrl = canvas.toDataURL();
-    document.body.style.cursor = `url('${cursorUrl}') 16 16, auto`;
+    document.body.style.cursor = `url('${cursorUrl}') 36 36, auto`;
   };
   img.src = 'images/Paw.png';
 
@@ -19,9 +50,9 @@ function setup() {
     const img = new Image();
     img.onload = function() {
       const c = document.createElement('canvas');
-      c.width = 48; c.height = 48;
+      c.width = 72; c.height = 72;
       const cx = c.getContext('2d');
-      cx.drawImage(img, 0, 0, 48, 48);
+      cx.drawImage(img, 0, 0, 72, 72);
       soapCursorUrl = c.toDataURL();
     };
     img.src = 'images/soap3.png';
@@ -33,9 +64,9 @@ function setup() {
     const img = new Image();
     img.onload = function() {
       const c = document.createElement('canvas');
-      c.width = 48; c.height = 48;
+      c.width = 72; c.height = 72;
       const cx = c.getContext('2d');
-      cx.drawImage(img, 0, 0, 48, 48);
+      cx.drawImage(img, 0, 0, 72, 72);
       catBrushCursorUrl = c.toDataURL();
     };
     img.src = 'images/catbrush.png';
@@ -76,7 +107,7 @@ function setup() {
 
       if (isObj1Flow) {
         // Scrub detection: total movement distance inside the image fills the bar.
-        const movementTracker = createMovementProgressTracker(220, () => {
+        const movementTracker = createMovementProgressTracker(600, () => {
           if (clickCount < maxClicks) {
             flashProgressAndMaybeComplete();
           }
@@ -99,6 +130,10 @@ function setup() {
         function celebrateCompletionOnce() {
           if (completionCelebrated) return;
           completionCelebrated = true;
+          // Play celebration sound
+          if (celebrationSound) {
+            celebrationSound.play();
+          }
           const frame = imgElem.closest('.image-interactive');
           if (!frame) return;
           const rect = frame.getBoundingClientRect();
@@ -140,6 +175,10 @@ function setup() {
           // Progress based on how far the cursor moves inside the image
           if (clickCount < maxClicks) {
             movementTracker.handleMove(e.clientX, e.clientY);
+            // Play washing sound while scrubbing
+            if (washingSound && !washingSound.isPlaying()) {
+              washingSound.play();
+            }
           }
 
           // Emit trailing bubbles following soap cursor while moving
@@ -164,13 +203,17 @@ function setup() {
           movementTracker.reset();
           const frame = imgElem.closest('.image-interactive');
           if (frame) frame.style.cursor = '';
+          // Stop washing sound when cursor leaves
+          if (washingSound && washingSound.isPlaying()) {
+            washingSound.stop();
+          }
         });
 
         // Switch to soap cursor inside the image frame
         imgElem.addEventListener('mouseenter', () => {
           const frame = imgElem.closest('.image-interactive');
           if (frame && soapCursorUrl) {
-            frame.style.cursor = `url('${soapCursorUrl}') 16 16, auto`;
+            frame.style.cursor = `url('${soapCursorUrl}') 36 36, auto`;
           }
         });
 
@@ -247,7 +290,7 @@ function setup() {
         let lastFurTime = 0;
         const furIntervalMs = 120; // throttle fur emission
 
-        const movementTracker = createMovementProgressTracker(250, () => {
+        const movementTracker = createMovementProgressTracker(650, () => {
           if (clickCount < maxClicks) {
             clickCount++;
             if (clickCount > maxClicks) clickCount = maxClicks;
@@ -293,7 +336,7 @@ function setup() {
         imgElem.addEventListener('mouseenter', () => {
           const frame = imgElem.closest('.image-interactive');
           if (frame && catBrushCursorUrl) {
-            frame.style.cursor = `url('${catBrushCursorUrl}') 16 16, auto`;
+            frame.style.cursor = `url('${catBrushCursorUrl}') 36 36, auto`;
           }
           movementTracker.reset();
         });
@@ -301,6 +344,10 @@ function setup() {
           const frame = imgElem.closest('.image-interactive');
           if (frame) frame.style.cursor = '';
           movementTracker.reset();
+          // Stop purring sound when cursor leaves
+          if (purringSound && purringSound.isPlaying()) {
+            purringSound.stop();
+          }
         });
 
         // Mouse movement inside image raises the bar
@@ -312,6 +359,10 @@ function setup() {
           }
           if (clickCount < maxClicks) {
             movementTracker.handleMove(e.clientX, e.clientY);
+            // Play purring sound while brushing
+            if (purringSound && !purringSound.isPlaying()) {
+              purringSound.play();
+            }
           }
         });
 
@@ -326,6 +377,10 @@ function setup() {
           }
           if (clickCount < maxClicks) {
             movementTracker.handleMove(t.clientX, t.clientY);
+            // Play purring sound while brushing
+            if (purringSound && !purringSound.isPlaying()) {
+              purringSound.play();
+            }
           }
         }, { passive: true });
       } else {
@@ -548,7 +603,8 @@ function spawnFurAt(container, clientX, clientY, opts = {}) {
 
 // Fill control 
 let clickCount = 0;
-const maxClicks = 10;
+const maxClicks = 25;
+let celebrationPlayed = false;
 
 function updateFill(count) {
   const fillEl = document.querySelector('.meter-fill');
@@ -567,6 +623,11 @@ function updateFill(count) {
 
   // When full, reveal final image and completion text without requiring a click
   if (fraction >= 1) {
+    // Play celebration sound once for all objectives
+    if (!celebrationPlayed && typeof celebrationSound !== 'undefined' && celebrationSound) {
+      celebrationSound.play();
+      celebrationPlayed = true;
+    }
     const imgElem = document.getElementById('interactive-img');
     if (imgElem) {
       const src = imgElem.getAttribute('src') || '';
